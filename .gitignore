@@ -1,0 +1,21 @@
+.DS_Store
+**/.DS_Store
+
+# Build artifacts
+**/.build/
+**/target/
+**/*.dSYM/
+
+# App bundles / zips
+*.app
+*.app.zip
+
+# Logs / temp
+**/run.log
+**/run.pid
+**/report.txt
+
+# Swift build intermediates
+*.o
+*.swiftmodule
+*.swiftsourceinfo

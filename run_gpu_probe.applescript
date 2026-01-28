@@ -1,0 +1,1 @@
+do shell script "nohup /bin/bash -lc \\\"while true; do /usr/bin/powermetrics --samplers gpu_power -n 1 > /tmp/gpu_power.txt; sleep 2; done\\\" >/tmp/gpu_probe.log 2>&1 & echo \\$! > /tmp/gpu_probe.pid" with administrator privileges
