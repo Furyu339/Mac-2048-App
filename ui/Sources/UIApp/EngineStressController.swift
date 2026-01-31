@@ -2,6 +2,7 @@ import Foundation
 
 final class EngineStressController {
     private var task: Task<Void, Never>?
+    private let stressClient = EngineClient()
 
     func start(boardProvider: @escaping () -> [Int]) {
         task?.cancel()
@@ -10,7 +11,7 @@ final class EngineStressController {
                 let base = await MainActor.run { boardProvider() }
                 let batch = Self.generateBoards(base: base, count: 6, depth: 6)
                 for board in batch {
-                    _ = await EngineClient.shared.hint(board: board, score: 0, timeLimitMs: 1500, maxDepth: 9)
+                    _ = await self.stressClient.hint(board: board, score: 0, timeLimitMs: 1500, maxDepth: 9)
                 }
             }
         }

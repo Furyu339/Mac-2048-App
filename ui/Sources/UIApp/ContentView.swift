@@ -138,10 +138,10 @@ struct ContentView: View {
                 .font(.system(size: 12, weight: .medium, design: .rounded))
                 .foregroundColor(.white.opacity(0.6))
             HStack(spacing: 6) {
-                Text(vm.hintDirection?.arrow ?? "—")
+                Text(vm.isHintComputing ? "…" : (vm.hintDirection?.arrow ?? "—"))
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
-                Text(vm.hintDirection?.label ?? "无")
+                Text(vm.isHintComputing ? "计算中" : (vm.hintDirection?.label ?? "无"))
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundColor(.white.opacity(0.9))
             }
