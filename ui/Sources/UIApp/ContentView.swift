@@ -23,7 +23,7 @@ struct ContentView: View {
         .overlay(
             KeyCatcherView(onKeyDown: { event in
                 handleKey(event)
-            }, allowFocus: !vm.isAutoPlaying)
+            }, allowFocus: true)
             .frame(width: 0, height: 0)
         )
         .onChange(of: vm.hintEnabled) { _ in
@@ -31,9 +31,7 @@ struct ContentView: View {
         }
         .onAppear {
             vm.start()
-            if !vm.isAutoPlaying {
-                NSApp.activate(ignoringOtherApps: true)
-            }
+            NSApp.activate(ignoringOtherApps: true)
             keyMonitor.start { event in
                 handleKey(event)
             }
@@ -166,21 +164,9 @@ struct ContentView: View {
                 toggleButton(title: vm.hintEnabled ? "提示已开" : "提示已关", isOn: vm.hintEnabled) {
                     vm.hintEnabled.toggle()
                 }
-                toggleButton(title: vm.isAutoPlaying ? "自动中" : "自动游玩", isOn: vm.isAutoPlaying) {
-                    vm.toggleAutoPlay()
-                }
                 toggleButton(title: "日志", isOn: false) {
                     AILogger.shared.toggleWindow()
                 }
-            }
-
-            HStack(spacing: 10) {
-                Text("自动步进间隔")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundColor(.white.opacity(0.7))
-                Text(String(format: "%.2f 秒/步", vm.autoInterval))
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.85))
             }
         }
         .padding(.horizontal, 28)
@@ -234,7 +220,6 @@ struct ContentView: View {
     }
 
     private func handleKey(_ event: NSEvent) {
-        guard !vm.isAutoPlaying else { return }
         switch event.keyCode {
         case 123: vm.move(.left)
         case 124: vm.move(.right)

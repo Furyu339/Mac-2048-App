@@ -106,15 +106,6 @@ final class EngineClient {
         }
     }
 
-    func auto(timeLimitMs: UInt64, maxDepth: Int) async -> EngineMoveResultResponse? {
-        let id = nextRequestId()
-        let req: [String: Any] = ["type": "auto", "id": id, "time_limit_ms": timeLimitMs, "max_depth": maxDepth]
-        AILogger.shared.append("发送: auto \(id) depth=\(maxDepth) time=\(timeLimitMs)ms")
-        return await send(request: req) { data in
-            try? JSONDecoder().decode(EngineMoveResultResponse.self, from: data)
-        }
-    }
-
     private func send<T>(request: [String: Any], decode: @escaping (Data) -> T?) async -> T? {
         startIfNeeded()
         guard let stdinPipe else { return nil }

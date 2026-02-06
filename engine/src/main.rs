@@ -49,8 +49,6 @@ enum Request {
     Hint { id: u64, board: Vec<i32>, score: i32, time_limit_ms: u64, max_depth: i32 },
     #[serde(rename = "move")]
     Move { id: u64, direction: Direction },
-    #[serde(rename = "auto")]
-    Auto { id: u64, time_limit_ms: u64, max_depth: i32 },
 }
 
 #[derive(Serialize)]
@@ -191,21 +189,6 @@ fn main() {
                         *rid = id;
                     }
                     resp
-                } else {
-                    engine.state_response(id)
-                }
-            }
-            Request::Auto { id, time_limit_ms, max_depth } => {
-                let (dir, _, _) = best_move_with_metrics(&engine.board.to_vec(), engine.score, time_limit_ms, max_depth);
-                if let Some(dir) = dir {
-                    if let Some(mut resp) = engine.apply_move(dir) {
-                        if let Response::MoveResult { id: ref mut rid, .. } = resp {
-                            *rid = id;
-                        }
-                        resp
-                    } else {
-                        engine.state_response(id)
-                    }
                 } else {
                     engine.state_response(id)
                 }
