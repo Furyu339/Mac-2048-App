@@ -1,82 +1,69 @@
 import Foundation
+import Combine
 
 @MainActor
 final class GameViewModel: ObservableObject {
     @Published var state = GameState()
-    @Published var hintEnabled: Bool = true
-    @Published var hintDirection: Direction? = nil
-    @Published var isHintComputing: Bool = false
+    @Published var lastMoveDirection: Direction? = nil
 
-    private var hintTask: Task<Void, Never>?
-    private var hintToken: Int = 0
-    private let hintClient = EngineClient()
+    private let defaults = UserDefaults.standard
+    private let bestScoreKey = "match2048.bestScore"
+    private var cancellables: Set<AnyCancellable> = []
+
+    init() {
+        state.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
+        let savedBest = defaults.integer(forKey: bestScoreKey)
+        if savedBest > 0 {
+            state.bestScore = savedBest
+        }
+    }
 
     func start() {
-        Task {
-            _ = await EngineClient.shared.reset().map { resp in
-                state.applyState(board: resp.board, score: resp.score, bestScore: resp.best_score, isGameOver: resp.is_game_over)
-            }
-            updateHintIfNeeded()
+        if state.board.allSatisfy({ $0 == 0 }) {
+            reset()
         }
     }
 
     func reset() {
-        Task {
-            if let resp = await EngineClient.shared.reset() {
-                state.applyState(board: resp.board, score: resp.score, bestScore: resp.best_score, isGameOver: resp.is_game_over)
-            }
-            updateHintIfNeeded()
-        }
+        let board = GameLogic.createInitialBoard(seedCount: 2)
+        let best = max(state.bestScore, defaults.integer(forKey: bestScoreKey))
+        state.applyState(board: board, score: 0, bestScore: best, isGameOver: GameLogic.isGameOver(board: board))
     }
 
     func move(_ direction: Direction) {
         if state.isAnimating { return }
-        Task {
-            if let resp = await EngineClient.shared.move(direction: direction) {
-                applyMoveResponse(resp)
-            }
-            updateHintIfNeeded()
-        }
-    }
+        if state.isGameOver { return }
+        guard let turn = GameLogic.nextTurn(board: state.board, direction: direction) else { return }
 
-    func updateHintIfNeeded() {
-        hintTask?.cancel()
-        hintTask = nil
-
-        guard hintEnabled else {
-            hintDirection = nil
-            isHintComputing = false
-            return
+        let (moveOutcome, resolveOutcome, spawnedIndices, finalBoard) = turn
+        let merged = moveOutcome.mergedIndices.union(resolveOutcome.upgradedIndices)
+        let gained = moveOutcome.score + resolveOutcome.score
+        let score = state.score + gained
+        let bestScore = max(state.bestScore, score)
+        if bestScore > state.bestScore {
+            defaults.set(bestScore, forKey: bestScoreKey)
         }
 
-        isHintComputing = true
-        hintToken += 1
-        let token = hintToken
-        hintTask = Task.detached(priority: .userInitiated) { [board = state.board, score = state.score] in
-            let resp = await self.hintClient.hint(board: board, score: score, timeLimitMs: 1200, maxDepth: 7)
-            let cpuDir = resp?.direction
-            let cpuValue = resp?.value ?? 0
-            let hybrid = HybridEvaluator()
-            let gpuScores = hybrid.gpuDirectionScores(board: board, batchPerDir: 512, rolloutDepth: 3)
-            let combined = hybrid.combine(cpuDirection: cpuDir, cpuValue: cpuValue, gpuScores: gpuScores)
-            await MainActor.run {
-                guard self.hintEnabled, self.hintToken == token else { return }
-                self.hintDirection = combined ?? cpuDir
-                self.isHintComputing = false
-            }
+        let activeSpawned = spawnedIndices.filter { idx in
+            finalBoard.indices.contains(idx) && finalBoard[idx] > 0
         }
-    }
-
-    private func applyMoveResponse(_ resp: EngineMoveResultResponse) {
         state.applyMove(
-            previous: resp.previous_board,
-            final: resp.final_board,
-            movements: resp.movements,
-            merged: resp.merged_indices,
-            spawnedIndex: resp.spawned_index,
-            score: resp.score,
-            bestScore: resp.best_score,
-            isGameOver: resp.is_game_over
+            previous: state.board,
+            final: finalBoard,
+            movements: moveOutcome.movements,
+            merged: Array(merged),
+            spawnedIndices: activeSpawned,
+            score: score,
+            bestScore: bestScore,
+            isGameOver: GameLogic.isGameOver(board: finalBoard),
+            chainCount: resolveOutcome.chainCount,
+            clearedCount: resolveOutcome.clearedCount
         )
+        lastMoveDirection = direction
     }
 }

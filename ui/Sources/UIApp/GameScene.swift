@@ -30,10 +30,11 @@ final class GameScene: SKScene {
         layoutBoard()
     }
 
-    func renderStatic(board: [Int], spawnedIndex: Int? = nil) {
+    func renderStatic(board: [Int], spawnedIndices: [Int] = []) {
         overlayLayer.removeAllChildren()
         staticLayer.removeAllChildren()
         layoutBoard()
+        let spawnedSet = Set(spawnedIndices)
 
         for index in 0..<board.count {
             let value = board[index]
@@ -41,7 +42,7 @@ final class GameScene: SKScene {
             let tile = makeTile(value: value, size: cellSize())
             tile.position = point(for: index)
             staticLayer.addChild(tile)
-            if let spawnedIndex, spawnedIndex == index {
+            if spawnedSet.contains(index) {
                 tile.alpha = 0.0
                 tile.setScale(0.6)
                 let appear = SKAction.group([
@@ -59,7 +60,7 @@ final class GameScene: SKScene {
         mergedIndices: Set<Int>,
         finalBoard: [Int],
         previousBoard: [Int],
-        spawnedIndex: Int?,
+        spawnedIndices: [Int],
         moveDuration: TimeInterval,
         mergeDuration: TimeInterval
     ) {
@@ -128,7 +129,7 @@ final class GameScene: SKScene {
         overlayLayer.run(SKAction.sequence([
             SKAction.wait(forDuration: finishDelay),
             SKAction.run { [weak self] in
-                self?.renderStatic(board: finalBoard, spawnedIndex: spawnedIndex)
+                self?.renderStatic(board: finalBoard, spawnedIndices: spawnedIndices)
             }
         ]))
     }

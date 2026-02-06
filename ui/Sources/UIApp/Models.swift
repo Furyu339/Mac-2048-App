@@ -48,7 +48,7 @@ final class GameState: ObservableObject {
     @Published var score: Int = 0
     @Published var bestScore: Int = 0
     @Published var mergedIndices: Set<Int> = []
-    @Published var spawnedIndex: Int? = nil
+    @Published var spawnedIndices: Set<Int> = []
     @Published var isGameOver: Bool = false
     @Published var previousBoard: [Int] = Array(repeating: 0, count: GameConstants.boardCount)
     @Published var movementSnapshot: [Movement] = []
@@ -56,6 +56,12 @@ final class GameState: ObservableObject {
     @Published var isAnimating: Bool = false
     @Published var currentMoveDuration: TimeInterval = GameConstants.moveDuration
     @Published var currentMergeDuration: TimeInterval = GameConstants.mergeDuration
+    @Published var lastChainCount: Int = 0
+    @Published var lastClearedCount: Int = 0
+
+    var maxTile: Int {
+        board.max() ?? 0
+    }
 
     func applyState(board: [Int], score: Int, bestScore: Int, isGameOver: Bool) {
         self.board = board
@@ -64,19 +70,34 @@ final class GameState: ObservableObject {
         self.isGameOver = isGameOver
         self.movementSnapshot = []
         self.mergedIndices = []
-        self.spawnedIndex = nil
+        self.spawnedIndices = []
         self.previousBoard = board
         self.isAnimating = false
+        self.lastChainCount = 0
+        self.lastClearedCount = 0
         self.movementTick += 1
     }
 
-    func applyMove(previous: [Int], final: [Int], movements: [Movement], merged: [Int], spawnedIndex: Int?, score: Int, bestScore: Int, isGameOver: Bool) {
+    func applyMove(
+        previous: [Int],
+        final: [Int],
+        movements: [Movement],
+        merged: [Int],
+        spawnedIndices: [Int],
+        score: Int,
+        bestScore: Int,
+        isGameOver: Bool,
+        chainCount: Int,
+        clearedCount: Int
+    ) {
         self.previousBoard = previous
         self.board = final
         self.score = score
         self.bestScore = bestScore
         self.mergedIndices = Set(merged)
-        self.spawnedIndex = spawnedIndex
+        self.spawnedIndices = Set(spawnedIndices)
+        self.lastChainCount = chainCount
+        self.lastClearedCount = clearedCount
         self.movementSnapshot = movements.filter { $0.from != $0.to || $0.isMerge }
         self.movementTick += 1
         self.isAnimating = true

@@ -26,9 +26,6 @@ struct ContentView: View {
             }, allowFocus: true)
             .frame(width: 0, height: 0)
         )
-        .onChange(of: vm.hintEnabled) { _ in
-            vm.updateHintIfNeeded()
-        }
         .onAppear {
             vm.start()
             NSApp.activate(ignoringOtherApps: true)
@@ -79,19 +76,19 @@ struct ContentView: View {
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 6) {
-                Text("2048")
+                Text("三消 2048")
                     .font(.system(size: 44, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
-                Text("方案 B · 计算引擎分离")
+                Text("滑动合并 + 连锁消除")
                     .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundColor(.white.opacity(0.7))
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 6) {
-                Text(vm.state.isGameOver ? "游戏结束" : "状态正常")
+                Text(vm.state.isGameOver ? "游戏结束" : "无尽模式")
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundColor(vm.state.isGameOver ? .red.opacity(0.9) : .white.opacity(0.7))
-                Text("目标: 2048+")
+                Text("每回合补 2 块 (2/4/8/16)")
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundColor(.white.opacity(0.6))
             }
@@ -102,8 +99,8 @@ struct ContentView: View {
     private var scoreRow: some View {
         HStack(spacing: 14) {
             scoreCard(title: "当前分数", value: "\(vm.state.score)")
-            scoreCard(title: "最高分", value: "\(vm.state.bestScore)")
-            hintCard
+            scoreCard(title: "历史最高", value: "\(vm.state.bestScore)")
+            battleCard
         }
         .padding(.horizontal, 28)
     }
@@ -130,23 +127,26 @@ struct ContentView: View {
         )
     }
 
-    private var hintCard: some View {
+    private var battleCard: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("提示")
+            Text("战况")
                 .font(.system(size: 12, weight: .medium, design: .rounded))
                 .foregroundColor(.white.opacity(0.6))
             HStack(spacing: 6) {
-                Text(vm.isHintComputing ? "…" : (vm.hintDirection?.arrow ?? "—"))
+                Text("⬢\(vm.state.maxTile)")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
-                Text(vm.isHintComputing ? "计算中" : (vm.hintDirection?.label ?? "无"))
+                Text(vm.state.lastChainCount > 0 ? "连锁 x\(vm.state.lastChainCount)" : "无连锁")
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundColor(.white.opacity(0.9))
             }
+            Text(vm.state.lastClearedCount > 0 ? "上回合消除 \(vm.state.lastClearedCount) 块" : "上回合无消除")
+                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .foregroundColor(.white.opacity(0.6))
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 16)
-        .frame(minWidth: 120, alignment: .leading)
+        .frame(minWidth: 148, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.white.opacity(0.08))
@@ -158,15 +158,15 @@ struct ContentView: View {
     }
 
     private var controlPanel: some View {
-        VStack(spacing: 14) {
-            HStack(spacing: 12) {
+        VStack(spacing: 10) {
+            HStack {
                 primaryButton(title: "新游戏") { vm.reset() }
-                toggleButton(title: vm.hintEnabled ? "提示已开" : "提示已关", isOn: vm.hintEnabled) {
-                    vm.hintEnabled.toggle()
-                }
-                toggleButton(title: "日志", isOn: false) {
-                    AILogger.shared.toggleWindow()
-                }
+                Spacer()
+            }
+
+            HStack(spacing: 10) {
+                ruleBadge("三连及以上相邻同值会触发消除")
+                ruleBadge("消除后保留一块并翻倍")
             }
         }
         .padding(.horizontal, 28)
@@ -178,7 +178,7 @@ struct ContentView: View {
                 .font(.system(size: 12, weight: .medium, design: .rounded))
                 .foregroundColor(.white.opacity(0.6))
             Spacer()
-            Text("引擎计算最优解")
+            Text(vm.state.isGameOver ? "按“新游戏”再来一局" : "策略: 先合并再做连锁")
                 .font(.system(size: 12, weight: .medium, design: .rounded))
                 .foregroundColor(.white.opacity(0.6))
         }
@@ -200,23 +200,20 @@ struct ContentView: View {
         .buttonStyle(.plain)
     }
 
-    private func toggleButton(title: String, isOn: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundColor(.white)
-                .padding(.vertical, 10)
-                .padding(.horizontal, 18)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(isOn ? Color(red: 0.35, green: 0.32, blue: 0.50) : Color.white.opacity(0.08))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Color.white.opacity(isOn ? 0.12 : 0.06), lineWidth: 1)
-                )
-        }
-        .buttonStyle(.plain)
+    private func ruleBadge(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 12, weight: .semibold, design: .rounded))
+            .foregroundColor(.white.opacity(0.86))
+            .padding(.vertical, 10)
+            .padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.white.opacity(0.08))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
+            )
     }
 
     private func handleKey(_ event: NSEvent) {

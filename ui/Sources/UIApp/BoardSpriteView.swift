@@ -14,11 +14,11 @@ struct BoardSpriteView: View {
                 .onAppear {
                     scene.scaleMode = .resizeFill
                     scene.size = CGSize(width: side, height: side)
-                    scene.renderStatic(board: model.board, spawnedIndex: model.spawnedIndex)
+                    scene.renderStatic(board: model.board, spawnedIndices: Array(model.spawnedIndices))
                 }
                 .onChange(of: side) { newSide in
                     scene.size = CGSize(width: newSide, height: newSide)
-                    scene.renderStatic(board: model.board, spawnedIndex: model.spawnedIndex)
+                    scene.renderStatic(board: model.board, spawnedIndices: Array(model.spawnedIndices))
                 }
                 .onChange(of: model.movementTick) { _ in
                     if !model.movementSnapshot.isEmpty {
@@ -27,17 +27,17 @@ struct BoardSpriteView: View {
                             mergedIndices: model.mergedIndices,
                             finalBoard: model.board,
                             previousBoard: model.previousBoard,
-                            spawnedIndex: model.spawnedIndex,
+                            spawnedIndices: Array(model.spawnedIndices),
                             moveDuration: model.currentMoveDuration,
                             mergeDuration: model.currentMergeDuration
                         )
                     } else {
-                        scene.renderStatic(board: model.board, spawnedIndex: model.spawnedIndex)
+                        scene.renderStatic(board: model.board, spawnedIndices: Array(model.spawnedIndices))
                     }
                 }
                 .onChange(of: model.board) { _ in
                     if model.movementSnapshot.isEmpty {
-                        scene.renderStatic(board: model.board, spawnedIndex: model.spawnedIndex)
+                        scene.renderStatic(board: model.board, spawnedIndices: Array(model.spawnedIndices))
                     }
                 }
         }
